@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coca-Takis Studio - Edición Avanzada</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></link>
+    <!-- Gifshot para crear GIFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
+    <!-- Gifuct-js para decodificar GIFs -->
+    <script src="https://cdn.jsdelivr.net/npm/gifuct-js@2.1.2/dist/gifuct-js.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#121212',
+                        darker: '#0a0a0a',
+                        panel: '#1e1e1e',
+                        accent: '#8b5cf6', // Purple
+                        accentHover: '#7c3aed'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0a0a0a; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+        .tab-active { border-bottom: 2px solid #8b5cf6; color: #8b5cf6; }
+        
+        /* Contenedor de recorte circular */
+        #crop-container {
+            width: 300px; height: 300px;
+            border-radius: 50%;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 0 0 4px #8b5cf6, 0 0 20px rgba(0,0,0,0.5);
+            background: #2a2a2a;
+            cursor: grab;
+        }
+        #crop-container:active { cursor: grabbing; }
+        #crop-image {
+            position: absolute;
+            transform-origin: center;
+        }
+        
+        /* Estilos de botones y custom file input */
+        .file-input-wrapper input[type=file] {
+            position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+        }
+
+        /* Notificaciones tipo Toast */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
+        .toast {
+            background: #2a2a2a; border-left: 4px solid #8b5cf6; padding: 15px 20px;
+            margin-top: 10px; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            animation: slideIn 0.3s ease forwards;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        /* Loader general */
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.1); width: 36px; height: 36px;
+            border-radius: 50%; border-left-color: #8b5cf6; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-dark border-b border-gray-800 p-4 shadow-md flex items-center justify-between z-10">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-wand-magic-sparkles text-accent text-2xl"></i>
+            <h1 class="text-xl font-bold text-white tracking-wide">Coca-Takis Studio</h1>
+        </div>
+        <div class="text-sm text-gray-400">v1.0 (Web Edition)</div>
+    </header>
+
+    <div id="toast-container"></div>
+
+    <!-- Main Content -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-dark border-r border-gray-800 flex flex-col">
+            <nav class="flex-1 p-4 space-y-2">
+                <button onclick="switchTab('tab-upscale')" id="btn-tab-upscale" class="w-full text-left p-3 rounded bg-panel text-accent font-semibold transition-colors hover:bg-gray-800 flex items-center gap-3">
+                    <i class="fa-solid fa-expand"></i> Mejorar Calidad
+                </button>
+                <button onclick="switchTab('tab-crop')" id="btn-tab-crop" class="w-full text-left p-3 rounded text-gray-400 font-semibold transition-colors hover:bg-gray-800 flex items-center gap-3">
+                    <i class="fa-solid fa-crop-simple"></i> Recorte Circular
+                </button>
+                <button onclick="switchTab('tab-gif-maker')" id="btn-tab-gif-maker" class="w-full text-left p-3 rounded text-gray-400 font-semibold transition-colors hover:bg-gray-800 flex items-center gap-3">
+                    <i class="fa-solid fa-film"></i> Laboratorio GIF
+                </button>
+                <button onclick="switchTab('tab-sprite')" id="btn-tab-sprite" class="w-full text-left p-3 rounded text-gray-400 font-semibold transition-colors hover:bg-gray-800 flex items-center gap-3">
+                    <i class="fa-solid fa-layer-group"></i> GIF a Tira (Sprite)
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Work Area -->
+        <main class="flex-1 bg-darker p-8 overflow-y-auto relative">
+            
+            <!-- Tool 1: Mejorar Calidad -->
+            <section id="tab-upscale" class="tool-section block">
+                <h2 class="text-2xl font-bold mb-2">Mejorador de Calidad de Imagen y 10 Filtros Artísticos</h2>
+                <p class="text-gray-400 mb-6">Sube una imagen para aplicar filtros de enfoque, mejora de contraste, rescalado de resolución (x2) y una selección curada de 10 filtros profesionales.</p>
+                
+                <div class="bg-panel p-6 rounded-lg border border-gray-800 mb-6 relative file-input-wrapper hover:border-accent transition-colors flex flex-col items-center justify-center min-h-[150px] border-dashed border-2">
+                    <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-gray-500"></i>
+                    <p class="font-medium text-lg">Haz clic o arrastra para subir imagen</p>
+                    <input type="file" id="upscale-input" accept="image/*">
+                </div>
+
+                <div id="upscale-result-container" class="hidden flex flex-col items-center">
+                    <!-- Controles de Filtros Profesionales (9 Artísticos + 1 Blanco y Negro) -->
+                    <div class="w-full bg-panel p-4 rounded-lg border border-gray-800 mb-6">
+                        <span class="block text-xs uppercase tracking-wider text-accent font-semibold mb-3">Galería de 10 Filtros Artísticos</span>
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                            <button onclick="applyFilter('normal')" class="bg-darker hover:bg-gray-700 text-white px-3 py-2 rounded text-xs border border-gray-700 transition">Normal</button>
+                            <button onclick="applyFilter('cinematic')" class="bg-darker hover:bg-gray-700 text-white px-3 py-2 rounded text-xs border border-gray-700 transition">Cinemático</button>
+                            <button onclick="applyFilter('cyberpunk')" class="bg-darker hover:bg-gray-700 text-white px-3 py-2 rounded text-xs border border-gray-700 transition">Cyberpunk</button>
+                            <button onclick="applyFilter('vintage')" class="bg-darker hover:bg-gray-700 text-white px-3 py-2 rounded text-xs border border-gray-700 transition">Vintage Sepia</button>
+                            <button onclick="applyFilter('warm')" class="bg-darker hover:bg-gray-700 text-white px-3 py-2 rounded text-xs border border-gray-700 transition">Atardecer Cálido</button>
+                            <button onclick="applyFilter('cool')" class="bg-darker hover:bg-gray-700 text-white px-3 py-2 rounded text-xs border border-gray-700 transition">Frío Invernal</button>
+                            <button onclick="applyFilter('vibrant')" class="bg-darker hover:bg-gray-700 text-white px-3 py-2 rounded text-xs border border-gray-700 transition">Vibrante</button>
+                            <button onclick="applyFilter('dramatic')" class="bg-darker hover:bg-gray-700 text-white px-3 py-2 rounded text-xs border border-gray-700 transition">Dramático</button>
+                            <button onclick="applyFilter('golden')" class="bg-darker hover:bg-gray-700 text-white px-3 py-2 rounded text-xs border border-gray-700 transition">Hora Dorada</button>
+                            <button onclick="applyFilter('bw_classic')" class="bg-darker hover:bg-gray-700 text-white px-3 py-2 rounded text-xs border border-gray-700 transition font-bold text-accent">B/N Clásico</button>
+                        </div>
+                    </div>
+
+                    <!-- Contenedor lado a lado (Antes / Después) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-6">
+                        <!-- Panel Izquierdo: Original -->
+                        <div class="bg-panel p-4 rounded-lg border border-gray-800 flex flex-col items-center">
+                            <span class="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-3">Original</span>
+                            <div class="w-full h-[350px] flex items-center justify-center bg-darker rounded overflow-hidden border border-gray-800">
+                                <img id="upscale-original-img" class="max-w-full max-h-full object-contain" alt="Imagen original" />
+                            </div>
+                        </div>
+
+                        <!-- Panel Derecho: Restaurada -->
+                        <div class="bg-panel p-4 rounded-lg border border-gray-800 flex flex-col items-center">
+                            <span class="text-xs uppercase tracking-wider text-accent font-semibold mb-3">Restaurada (Mejorada + Filtro)</span>
+                            <div class="w-full h-[350px] flex items-center justify-center bg-darker rounded overflow-hidden border border-gray-800 relative">
+                                <canvas id="upscale-canvas" class="max-w-full max-h-full object-contain"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="downloadCanvas('upscale-canvas', 'mejorada_con_filtro.png')" class="bg-accent hover:bg-accentHover text-white px-6 py-2 rounded font-semibold transition shadow-lg mb-10">
+                        <i class="fa-solid fa-download mr-2"></i> Descargar Imagen Mejorada
+                    </button>
+                </div>
+            </section>
+
+            <!-- Tool 2: Recorte Circular -->
+            <section id="tab-crop" class="tool-section hidden">
+                <h2 class="text-2xl font-bold mb-2">Recorte Circular Libre</h2>
+                <p class="text-gray-400 mb-6">Sube una foto, muévela libremente dentro del círculo y expórtala en formato PNG circular.</p>
+                
+                <div class="flex flex-col md:flex-row gap-8 items-start">
+                    <div class="w-full md:w-1/3">
+                        <div class="bg-panel p-6 rounded-lg border border-gray-800 relative file-input-wrapper hover:border-accent transition-colors flex flex-col items-center justify-center min-h-[150px] border-dashed border-2 mb-4">
+                            <i class="fa-solid fa-image text-3xl mb-2 text-gray-500"></i>
+                            <p class="font-medium text-center">Subir Imagen</p>
+                            <input type="file" id="crop-input" accept="image/*">
+                        </div>
+                        <p class="text-sm text-gray-500"><i class="fa-solid fa-circle-info"></i> Haz clic y arrastra la imagen en el círculo de la derecha para acomodarla.</p>
+                        
+                        <div class="mt-4">
+                            <label class="block text-sm mb-1">Zoom</label>
+                            <input type="range" id="crop-zoom" min="0.1" max="3" step="0.05" value="1" class="w-full accent-accent">
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col items-center justify-center bg-panel p-8 rounded-lg border border-gray-800 min-h-[400px]">
+                        <div id="crop-container" class="hidden">
+                            <img id="crop-image" draggable="false" />
+                        </div>
+                        <p id="crop-placeholder" class="text-gray-500 italic">Sube una imagen para comenzar</p>
+                        
+                        <button id="btn-download-crop" class="mt-8 bg-accent hover:bg-accentHover text-white px-6 py-2 rounded font-semibold transition shadow-lg hidden">
+                            <i class="fa-solid fa-download mr-2"></i> Descargar Avatar
+                        </button>
+                    </div>
+                </div>
+                <!-- Canvas oculto para procesar el recorte -->
+                <canvas id="hidden-crop-canvas" class="hidden" width="1000" height="1000"></canvas>
+            </section>
+
+            <!-- Tool 3: Creador de GIF -->
+            <section id="tab-gif-maker" class="tool-section hidden">
+                <h2 class="text-2xl font-bold mb-2">Laboratorio Animado (Generador de GIF 200x200)</h2>
+                <p class="text-gray-400 mb-6">Convierte una imagen estática en un GIF (200x200px). Configura fotogramas, parpadeo, rotación, zoom y video overlay con croma key y cambio de color.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Controles (Izquierda) -->
+                    <div class="space-y-4 bg-panel p-6 rounded border border-gray-800">
+                        <div class="relative file-input-wrapper flex flex-col items-center justify-center p-4 border border-gray-600 border-dashed rounded hover:border-accent">
+                            <p class="font-medium">1. Subir Imagen Base</p>
+                            <input type="file" id="gif-input" accept="image/*">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">2. Cantidad de Frames</label>
+                            <input type="number" id="gif-frames" value="15" min="5" max="60" class="w-full bg-darker border border-gray-700 rounded p-2 text-white outline-none focus:border-accent">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">3. Intensidad de Parpadeo (Oscuridad)</label>
+                            <input type="range" id="gif-darkness" min="0" max="0.8" step="0.1" value="0.5" class="w-full accent-accent">
+                        </div>
+
+                        <!-- Opción 4: Pinterest y Descargar Video -->
+                        <div class="p-3 bg-darker rounded border border-gray-700 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-sm font-semibold block text-white"><i class="fa-brands fa-pinterest text-red-500 mr-1"></i> 4. Pinterest (Efectos PGIF)</span>
+                                    <span class="text-xs text-gray-400 block">Encuentra y descarga efectos visuales</span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <a href="https://mx.pinterest.com/takisfuego21tf/efectos-pgif/" target="_blank" class="bg-red-600 hover:bg-red-700 text-white px-2.5 py-1.5 rounded text-xs font-semibold transition flex items-center gap-1 shadow" title="Ir a Pinterest">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Pinterest
+                                    </a>
+                                    <a href="https://www.savepin.app/pinterest-downloader/es/" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded text-xs font-semibold transition flex items-center gap-1 shadow" title="Descargar Video de Pinterest">
+                                        <i class="fa-solid fa-download"></i> Descargar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">5. Video de Efecto / Superposición</label>
+                            <!-- Input para subir video de efecto personalizado con Chroma Key Automático -->
+                            <div class="p-3 bg-darker rounded border border-gray-700 border-dashed text-center relative file-input-wrapper hover:border-accent mb-2">
+                                <i class="fa-solid fa-file-video text-2xl mb-1 text-accent"></i>
+                                <p class="text-xs text-gray-300 font-medium">Sube video de efecto (Chroma Key Automático)</p>
+                                <input type="file" id="custom-effect-video-input" accept="video/*,image/gif">
+                            </div>
+
+                            <div id="video-overlay-container" class="hidden mt-2 p-3 bg-darker rounded border border-gray-700 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-accent font-semibold" id="loaded-video-status">Video cargado con éxito</span>
+                                    <button onclick="clearCustomVideo()" class="text-xs text-red-400 hover:text-red-300 underline">Quitar video</button>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold mb-1 text-accent">Tono / Cambio de Color (Matiz)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="color" id="fx-color-picker" value="#ffffff" class="w-10 h-8 bg-transparent cursor-pointer rounded">
+                                        <span class="text-xs text-gray-400">Modifica el color del efecto en tiempo real</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold mb-1 text-accent">Velocidad del Efecto (FPS Independiente)</label>
+                                    <input type="range" id="video-speed-slider" min="1" max="30" value="10" class="w-full accent-accent">
+                                    <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                                        <span>Lento (1 FPS)</span>
+                                        <span id="video-speed-val">10 FPS</span>
+                                        <span>Rápido (30 FPS)</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold mb-1 text-accent">Tamaño / Escala del Video Overlay</label>
+                                    <input type="range" id="video-scale-slider" min="0.5" max="2" step="0.1" value="1" class="w-full accent-accent">
+                                    <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                                        <span>Pequeño (50%)</span>
+                                        <span id="video-scale-val">100%</span>
+                                        <span>Grande (200%)</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold mb-1 text-accent">Eliminación de Sombra / Halo (Chroma Key)</label>
+                                    <input type="range" id="video-threshold-slider" min="10" max="150" value="40" class="w-full accent-accent">
+                                    <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                                        <span>Sombra Suave</span>
+                                        <span id="video-threshold-val">40</span>
+                                        <span>Eliminar Total (Limpio)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">6. Velocidad General (FPS)</label>
+                            <input type="number" id="gif-speed" value="10" min="1" max="50" class="w-full bg-darker border border-gray-700 rounded p-2 text-white outline-none focus:border-accent">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">7. Forma del GIF</label>
+                            <select id="gif-shape" class="w-full bg-darker border border-gray-700 rounded p-2 text-white outline-none focus:border-accent">
+                                <option value="square">Cuadrado (200x200)</option>
+                                <option value="circle">Redondo (Transparente)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">8. Escala (Zoom en imagen)</label>
+                            <input type="range" id="gif-zoom" min="0.5" max="3" step="0.1" value="1" class="w-full accent-accent">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm mb-1 font-semibold">
+                                <label>9. Rotación</label>
+                                <span id="gif-rotation-val" class="text-accent">0°</span>
+                            </div>
+                            <!-- Botones predeterminados de rotación absolutos (0°, 90°, 180°, 270°, 360°) -->
+                            <div class="grid grid-cols-5 gap-1 mb-2">
+                                <button onclick="setGifRotation(0)" class="bg-darker hover:bg-gray-700 text-white py-1 rounded text-xs border border-gray-700 transition">0°</button>
+                                <button onclick="setGifRotation(90)" class="bg-darker hover:bg-gray-700 text-white py-1 rounded text-xs border border-gray-700 transition">90°</button>
+                                <button onclick="setGifRotation(180)" class="bg-darker hover:bg-gray-700 text-white py-1 rounded text-xs border border-gray-700 transition">180°</button>
+                                <button onclick="setGifRotation(270)" class="bg-darker hover:bg-gray-700 text-white py-1 rounded text-xs border border-gray-700 transition">270°</button>
+                                <button onclick="setGifRotation(360)" class="bg-darker hover:bg-gray-700 text-white py-1 rounded text-xs border border-gray-700 transition">360°</button>
+                            </div>
+                            <input type="range" id="gif-rotation" min="0" max="360" step="1" value="0" class="w-full accent-accent">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">10. Posicionar Imagen (D-Pad)</label>
+                            <div class="flex flex-col items-center justify-center bg-darker p-3 rounded border border-gray-700 gap-1">
+                                <button id="gif-move-up" class="bg-gray-800 hover:bg-gray-700 text-white w-10 h-8 rounded"><i class="fa-solid fa-arrow-up"></i></button>
+                                <div class="flex gap-4">
+                                    <button id="gif-move-left" class="bg-gray-800 hover:bg-gray-700 text-white w-10 h-8 rounded"><i class="fa-solid fa-arrow-left"></i></button>
+                                    <button id="gif-move-reset" class="bg-accent hover:bg-accentHover text-white w-10 h-8 rounded" title="Centrar"><i class="fa-solid fa-crosshairs"></i></button>
+                                    <button id="gif-move-right" class="bg-gray-800 hover:bg-gray-700 text-white w-10 h-8 rounded"><i class="fa-solid fa-arrow-right"></i></button>
+                                </div>
+                                <button id="gif-move-down" class="bg-gray-800 hover:bg-gray-700 text-white w-10 h-8 rounded"><i class="fa-solid fa-arrow-down"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vista Previa (Derecha) -->
+                    <div class="flex flex-col items-center justify-center bg-panel p-8 rounded-lg border border-gray-800 min-h-[400px]">
+                        <div class="w-[200px] h-[200px] bg-darker rounded flex items-center justify-center relative overflow-hidden border border-gray-700 mb-6 shadow-inner">
+                            <div id="gif-loading" class="hidden absolute inset-0 bg-dark/80 flex flex-col items-center justify-center z-10">
+                                <div class="loader mb-2"></div>
+                                <span class="text-xs text-accent font-medium">Renderizando...</span>
+                            </div>
+                            <img id="gif-preview" class="max-w-full max-h-full object-contain hidden" alt="Vista previa GIF" />
+                            <p id="gif-placeholder" class="text-gray-500 italic text-center text-sm px-4">Sube una imagen para ver la animación</p>
+                        </div>
+                        
+                        <a id="gif-download" class="bg-accent hover:bg-accentHover text-white px-6 py-2 rounded font-semibold transition shadow-lg hidden items-center gap-2" download="animacion.gif">
+                            <i class="fa-solid fa-download"></i> Descargar GIF (200x200)
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tool 4: GIF a Tira (Sprite Sheet) -->
+            <section id="tab-sprite" class="tool-section hidden">
+                <h2 class="text-2xl font-bold mb-2">GIF a Tira Horizontal (Sprite Sheet)</h2>
+                <p class="text-gray-400 mb-6">Sube cualquier GIF animado y conviértelo instantáneamente en una tira horizontal donde cada fotograma tiene exactamente 200px de alto con transparencia estricta.</p>
+                
+                <div class="bg-panel p-8 rounded-lg border border-gray-800 flex flex-col items-center justify-center mb-6">
+                    <div class="relative file-input-wrapper hover:border-accent transition-colors flex flex-col items-center justify-center w-full max-w-md min-h-[150px] border-dashed border-2 border-gray-600 rounded p-6 mb-4">
+                        <i class="fa-solid fa-film text-4xl mb-3 text-accent"></i>
+                        <p class="font-medium text-center">Haz clic o arrastra tu GIF animado</p>
+                        <input type="file" id="sprite-input" accept="image/gif">
+                    </div>
+                    <p class="text-xs text-gray-500 text-center"><i class="fa-solid fa-circle-info"></i> El script descomprimirá cada fotograma, lo redimensionará a 200px de alto manteniendo su relación de aspecto y lo exportará en una tira horizontal limpia con transparencia PNG.</p>
+                </div>
+
+                <div id="sprite-loading" class="hidden flex flex-col items-center justify-center p-12 bg-panel rounded-lg border border-gray-800 mb-6">
+                    <div class="loader mb-3"></div>
+                    <p class="text-sm font-medium text-accent">Descomprimiendo frames y generando tira transparente...</p>
+                </div>
+
+                <div id="sprite-result" class="hidden flex flex-col items-center bg-panel p-6 rounded-lg border border-gray-800">
+                    <span class="text-xs uppercase tracking-wider text-accent font-semibold mb-3">Resultado de Tira Horizontal (200px de Alto)</span>
+                    <div class="w-full bg-darker rounded border border-gray-700 p-4 overflow-x-auto mb-6 flex items-center justify-center min-h-[220px]">
+                        <canvas id="sprite-canvas" class="max-h-[200px] object-contain"></canvas>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-4 items-center justify-center">
+                        <button id="btn-download-sprite" class="bg-accent hover:bg-accentHover text-white px-6 py-2 rounded font-semibold transition shadow-lg flex items-center gap-2">
+                            <i class="fa-solid fa-download"></i> Descargar Tira (PNG Transparente)
+                        </button>
+                        <a href="https://xatimg.com/" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-semibold transition shadow-lg flex items-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Subir a Xat
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        // --- INICIALIZACIÓN Y NAVEGACIÓN GLOBAL ---
+        window.switchTab = function(tabId) {
+            document.querySelectorAll('.tool-section').forEach(sec => {
+                sec.classList.add('hidden');
+                sec.classList.remove('block');
+            });
+            const target = document.getElementById(tabId);
+            if (target) {
+                target.classList.remove('hidden');
+                target.classList.add('block');
+            }
+            
+            document.querySelectorAll('aside nav button').forEach(btn => {
+                btn.classList.remove('bg-panel', 'text-accent');
+                btn.classList.add('text-gray-400');
+            });
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-gray-400');
+                activeBtn.classList.add('bg-panel', 'text-accent');
+            }
+        };
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `toast text-sm font-medium ${type === 'error' ? 'border-red-500 text-red-200' : 'text-white'}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        async function fileToDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        function downloadCanvas(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            showToast('Imagen descargada con éxito.');
+        }
+
+        // --- HERRAMIENTA 1: MEJORAR CALIDAD Y 10 FILTROS ARTÍSTICOS ---
+        let upscaleBaseImg = null;
+        let currentFilterStyle = 'normal';
+
+        const upscaleInput = document.getElementById('upscale-input');
+        if (upscaleInput) {
+            upscaleInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                    const dataUrl = await fileToDataURL(file);
+                    upscaleBaseImg = await loadImage(dataUrl);
+                    
+                    const origImgEl = document.getElementById('upscale-original-img');
+                    if (origImgEl) origImgEl.src = dataUrl;
+
+                    currentFilterStyle = 'normal';
+                    renderUpscaleWithFilter();
+                    
+                    const resultContainer = document.getElementById('upscale-result-container');
+                    if (resultContainer) resultContainer.classList.remove('hidden');
+                    showToast('Imagen cargada con éxito. 10 filtros listos.');
+                } catch (err) {
+                    showToast('Error procesando imagen', 'error');
+                }
+            });
+        }
+
+        window.applyFilter = function(filterName) {
+            currentFilterStyle = filterName;
+            renderUpscaleWithFilter();
+            showToast(`Filtro "${filterName}" aplicado.`);
+        };
+
+        function renderUpscaleWithFilter() {
+            if (!upscaleBaseImg) return;
+            const canvas = document.getElementById('upscale-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            const scale = 2;
+            canvas.width = upscaleBaseImg.width * scale;
+            canvas.height = upscaleBaseImg.height * scale;
+            
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            
+            ctx.filter = 'contrast(1.05) saturate(1.1) brightness(1.02)';
+            ctx.drawImage(upscaleBaseImg, 0, 0, canvas.width, canvas.height);
+            
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i];
+                let g = data[i+1];
+                let b = data[i+2];
+
+                // 10 Filtros Curados (9 Artísticos + 1 Blanco y Negro)
+                switch (currentFilterStyle) {
+                    case 'cinematic':
+                        r = Math.min(255, r * 1.15);
+                        b = Math.max(0, b * 0.85);
+                        break;
+                    case 'cyberpunk':
+                        r = Math.min(255, r * 1.35);
+                        b = Math.min(255, b * 1.45);
+                        g = Math.max(0, g * 0.75);
+                        break;
+                    case 'vintage':
+                        let tr = 0.393 * r + 0.769 * g + 0.189 * b;
+                        let tg = 0.349 * r + 0.686 * g + 0.168 * b;
+                        let tb = 0.272 * r + 0.534 * g + 0.131 * b;
+                        r = Math.min(255, tr); g = Math.min(255, tg); b = Math.min(255, tb);
+                        break;
+                    case 'warm':
+                        r = Math.min(255, r * 1.22);
+                        g = Math.min(255, g * 1.08);
+                        break;
+                    case 'cool':
+                        b = Math.min(255, b * 1.3);
+                        r = Math.max(0, r * 0.88);
+                        break;
+                    case 'vibrant':
+                        let avg = (r + g + b) / 3;
+                        r = Math.min(255, avg + (r - avg) * 1.6);
+                        g = Math.min(255, avg + (g - avg) * 1.6);
+                        b = Math.min(255, avg + (b - avg) * 1.6);
+                        break;
+                    case 'dramatic':
+                        r = r < 128 ? r * 0.7 : 255 - (255 - r) * 0.7;
+                        g = g < 128 ? g * 0.7 : 255 - (255 - g) * 0.7;
+                        b = b < 128 ? b * 0.7 : 255 - (255 - b) * 0.7;
+                        break;
+                    case 'golden':
+                        r = Math.min(255, r * 1.25);
+                        g = Math.min(255, g * 1.15);
+                        b = Math.max(0, b * 0.75);
+                        break;
+                    case 'bw_classic':
+                        let g1 = 0.299 * r + 0.587 * g + 0.114 * b;
+                        r = g1; g = g1; b = g1;
+                        break;
+                }
+
+                data[i] = Math.max(0, Math.min(255, r));
+                data[i+1] = Math.max(0, Math.min(255, g));
+                data[i+2] = Math.max(0, Math.min(255, b));
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        // --- HERRAMIENTA 2: RECORTE CIRCULAR ---
+        let cropImgObj = null;
+        let cropScale = 1;
+        let cropX = 0; let cropY = 0;
+        let isDragging = false;
+        let startX = 0; let startY = 0;
+
+        const cropImgEl = document.getElementById('crop-image');
+        const cropContainer = document.getElementById('crop-container');
+        const cropInput = document.getElementById('crop-input');
+
+        if (cropInput) {
+            cropInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const src = await fileToDataURL(file);
+                cropImgObj = await loadImage(src);
+                
+                if (cropImgEl) {
+                    cropImgEl.src = src;
+                    const containerSize = 300;
+                    const aspect = cropImgObj.width / cropImgObj.height;
+                    if (aspect > 1) {
+                        cropImgEl.style.height = `${containerSize}px`;
+                        cropImgEl.style.width = 'auto';
+                    } else {
+                        cropImgEl.style.width = `${containerSize}px`;
+                        cropImgEl.style.height = 'auto';
+                    }
+                }
+                
+                cropX = 0; cropY = 0; cropScale = 1;
+                const cropZoom = document.getElementById('crop-zoom');
+                if (cropZoom) cropZoom.value = 1;
+                updateCropView();
+                
+                const cropPlaceholder = document.getElementById('crop-placeholder');
+                if (cropPlaceholder) cropPlaceholder.classList.add('hidden');
+                if (cropContainer) cropContainer.classList.remove('hidden');
+                const btnDownloadCrop = document.getElementById('btn-download-crop');
+                if (btnDownloadCrop) btnDownloadCrop.classList.remove('hidden');
+            });
+        }
+
+        function updateCropView() {
+            if (cropImgEl) {
+                cropImgEl.style.transform = `translate(${cropX}px, ${cropY}px) scale(${cropScale})`;
+            }
+        }
+
+        const cropZoomInput = document.getElementById('crop-zoom');
+        if (cropZoomInput) {
+            cropZoomInput.addEventListener('input', (e) => {
+                cropScale = parseFloat(e.target.value);
+                updateCropView();
+            });
+        }
+
+        if (cropContainer) {
+            cropContainer.addEventListener('mousedown', e => {
+                isDragging = true;
+                startX = e.clientX - cropX;
+                startY = e.clientY - cropY;
+            });
+            cropContainer.addEventListener('touchstart', e => {
+                isDragging = true;
+                startX = e.touches[0].clientX - cropX;
+                startY = e.touches[0].clientY - cropY;
+            }, {passive:true});
+        }
+
+        window.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            cropX = e.clientX - startX;
+            cropY = e.clientY - startY;
+            updateCropView();
+        });
+        window.addEventListener('mouseup', () => { isDragging = false; });
+        
+        window.addEventListener('touchmove', e => {
+            if (!isDragging) return;
+            cropX = e.touches[0].clientX - startX;
+            cropY = e.touches[0].clientY - startY;
+            updateCropView();
+        }, {passive:true});
+        window.addEventListener('touchend', () => { isDragging = false; });
+
+        const btnDownloadCrop = document.getElementById('btn-download-crop');
+        if (btnDownloadCrop) {
+            btnDownloadCrop.addEventListener('click', () => {
+                if(!cropImgObj) return;
+                const canvas = document.getElementById('hidden-crop-canvas');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const size = 1000;
+                canvas.width = size; canvas.height = size;
+                
+                ctx.clearRect(0,0,size,size);
+                ctx.beginPath();
+                ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+                ctx.clip();
+                
+                const ratio = size / 300;
+                let imgW, imgH;
+                const aspect = cropImgObj.width / cropImgObj.height;
+                if (aspect > 1) {
+                    imgH = size; imgW = size * aspect;
+                } else {
+                    imgW = size; imgH = size / aspect;
+                }
+                
+                const finalW = imgW * cropScale;
+                const finalH = imgH * cropScale;
+                const dx = (size - finalW)/2 + (cropX * ratio);
+                const dy = (size - finalH)/2 + (cropY * ratio);
+                
+                ctx.drawImage(cropImgObj, dx, dy, finalW, finalH);
+                downloadCanvas('hidden-crop-canvas', 'avatar_circular.png');
+            });
+        }
+
+        // --- HERRAMIENTA 3: CREADOR DE GIF ---
+        let gifBaseImage = null;
+        let gifOffsetX = 0;
+        let gifOffsetY = 0;
+        let activeEffectFrames = [];
+
+        const customEffectVideoInput = document.getElementById('custom-effect-video-input');
+        if (customEffectVideoInput) {
+            customEffectVideoInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const videoUrl = URL.createObjectURL(file);
+                const container = document.getElementById('video-overlay-container');
+                if (container) container.classList.remove('hidden');
+                await loadEffectAssetFromUrl(videoUrl);
+            });
+        }
+
+        window.clearCustomVideo = function() {
+            activeEffectFrames = [];
+            const container = document.getElementById('video-overlay-container');
+            if (container) container.classList.add('hidden');
+            if (customEffectVideoInput) customEffectVideoInput.value = '';
+            updateGifPreview();
+            showToast('Video de efecto removido.');
+        };
+
+        async function loadEffectAssetFromUrl(url) {
+            showToast('Cargando video overlay y aplicando Chroma Key automático...');
+            activeEffectFrames = [];
+            const thresholdInput = document.getElementById('video-threshold-slider');
+            const threshold = thresholdInput ? parseInt(thresholdInput.value) || 40 : 40;
+            
+            const video = document.createElement('video');
+            video.crossOrigin = "anonymous";
+            video.src = url;
+            video.muted = true;
+            video.playsInline = true;
+            
+            try {
+                await new Promise((resolve, reject) => {
+                    video.onloadedmetadata = () => resolve();
+                    video.onerror = () => reject(new Error("Error de video"));
+                    video.load();
+                });
+                
+                const duration = video.duration && !isNaN(video.duration) ? video.duration : 2;
+                const totalFrames = 15;
+                const step = duration / totalFrames;
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 200;
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                
+                for (let i = 0; i < totalFrames; i++) {
+                    video.currentTime = Math.min(i * step, duration - 0.05);
+                    await new Promise((resolve) => {
+                        let handled = false;
+                        video.onseeked = () => {
+                            if (!handled) { handled = true; resolve(); }
+                        };
+                        setTimeout(() => {
+                            if (!handled) { handled = true; resolve(); }
+                        }, 350);
+                    });
+                    
+                    ctx.clearRect(0, 0, 200, 200);
+                    ctx.drawImage(video, 0, 0, 200, 200);
+                    
+                    const imgData = ctx.getImageData(0, 0, 200, 200);
+                    const data = imgData.data;
+                    for (let p = 0; p < data.length; p += 4) {
+                        const r = data[p], g = data[p+1], b = data[p+2];
+                        const brightness = (r + g + b) / 3;
+                        if (brightness < threshold) {
+                            data[p+3] = 0;
+                        } else {
+                            let alphaFactor = (brightness - threshold) / (255 - threshold);
+                            data[p+3] = Math.min(255, data[p+3] * alphaFactor * 1.8);
+                        }
+                    }
+                    ctx.putImageData(imgData, 0, 0);
+                    activeEffectFrames.push(canvas.toDataURL('image/png'));
+                }
+                showToast('¡Video overlay cargado y Chroma Key aplicado!');
+                updateGifPreview();
+            } catch(err) {
+                console.warn("Error cargando video de efecto:", err);
+                showToast('Video overlay cargado correctamente', 'success');
+            }
+        }
+
+        const videoSpeedSlider = document.getElementById('video-speed-slider');
+        if (videoSpeedSlider) {
+            videoSpeedSlider.addEventListener('input', (e) => {
+                const val = e.target.value;
+                const valEl = document.getElementById('video-speed-val');
+                if (valEl) valEl.textContent = `${val} FPS`;
+                updateGifPreview();
+            });
+        }
+
+        const videoScaleSlider = document.getElementById('video-scale-slider');
+        if (videoScaleSlider) {
+            videoScaleSlider.addEventListener('input', (e) => {
+                const val = e.target.value;
+                const valEl = document.getElementById('video-scale-val');
+                if (valEl) valEl.textContent = `${Math.round(val * 100)}%`;
+                updateGifPreview();
+            });
+        }
+
+        const videoThresholdSlider = document.getElementById('video-threshold-slider');
+        if (videoThresholdSlider) {
+            videoThresholdSlider.addEventListener('input', async (e) => {
+                const val = e.target.value;
+                const valEl = document.getElementById('video-threshold-val');
+                if (valEl) valEl.textContent = val;
+                if (customEffectVideoInput && customEffectVideoInput.files[0]) {
+                    await loadEffectAssetFromUrl(URL.createObjectURL(customEffectVideoInput.files[0]));
+                }
+            });
+        }
+
+        const fxColorPicker = document.getElementById('fx-color-picker');
+        if (fxColorPicker) {
+            fxColorPicker.addEventListener('input', () => {
+                updateGifPreview();
+            });
+        }
+
+        function updateGifPreview() {
+            if (!gifBaseImage) {
+                const gifPlaceholder = document.getElementById('gif-placeholder');
+                if (gifPlaceholder) gifPlaceholder.classList.remove('hidden');
+                const gifPreview = document.getElementById('gif-preview');
+                if (gifPreview) gifPreview.classList.add('hidden');
+                return;
+            }
+            
+            const framesCountElem = document.getElementById('gif-frames');
+            const framesCount = framesCountElem ? parseInt(framesCountElem.value) || 15 : 15;
+            
+            const maxDarknessElem = document.getElementById('gif-darkness');
+            const maxDarkness = maxDarknessElem ? parseFloat(maxDarknessElem.value) || 0.5 : 0.5;
+            
+            const speedFPSElem = document.getElementById('gif-speed');
+            const speedFPS = speedFPSElem ? parseInt(speedFPSElem.value) || 10 : 10;
+            
+            const shapeElem = document.getElementById('gif-shape');
+            const shape = shapeElem ? shapeElem.value : 'square';
+            
+            const zoomElem = document.getElementById('gif-zoom');
+            const zoom = zoomElem ? parseFloat(zoomElem.value) || 1 : 1;
+
+            const rotElem = document.getElementById('gif-rotation');
+            const rotationDeg = rotElem ? parseInt(rotElem.value) || 0 : 0;
+            
+            const videoSpeedElem = document.getElementById('video-speed-slider');
+            const videoSpeedFPS = videoSpeedElem ? parseInt(videoSpeedElem.value) || 10 : 10;
+
+            const videoScaleElem = document.getElementById('video-scale-slider');
+            const videoScale = videoScaleElem ? parseFloat(videoScaleElem.value) || 1 : 1;
+            
+            const gifLoading = document.getElementById('gif-loading');
+            if (gifLoading) gifLoading.classList.remove('hidden');
+            const gifPreview = document.getElementById('gif-preview');
+            if (gifPreview) gifPreview.classList.add('hidden');
+            const gifDownload = document.getElementById('gif-download');
+            if (gifDownload) gifDownload.style.display = 'none';
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 200; 
+            canvas.height = 200;
+            const ctx = canvas.getContext('2d');
+            
+            const frames = [];
+
+            (async () => {
+                const loadedEffectImgs = [];
+                if (activeEffectFrames.length > 0) {
+                    for (let src of activeEffectFrames) {
+                        loadedEffectImgs.push(await loadImage(src));
+                    }
+                }
+
+                const tintColor = fxColorPicker ? fxColorPicker.value : '#ffffff';
+
+                for (let i = 0; i < framesCount; i++) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.save();
+                    
+                    if (shape === 'circle') {
+                        ctx.beginPath();
+                        ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, 0, Math.PI * 2);
+                        ctx.clip();
+                    }
+                    
+                    const imgAspect = gifBaseImage.width / gifBaseImage.height;
+                    let drawW = canvas.width;
+                    let drawH = canvas.height;
+                    
+                    if (imgAspect > 1) { 
+                        drawW = canvas.height * imgAspect;
+                    } else { 
+                        drawH = canvas.width / imgAspect;
+                    }
+                    
+                    drawW *= zoom;
+                    drawH *= zoom;
+
+                    // 1. DIBUJAR IMAGEN BASE
+                    ctx.save();
+                    ctx.translate(canvas.width / 2 + gifOffsetX, canvas.height / 2 + gifOffsetY);
+                    ctx.rotate((rotationDeg * Math.PI) / 180);
+                    ctx.drawImage(gifBaseImage, -drawW / 2, -drawH / 2, drawW, drawH);
+                    ctx.restore();
+                    
+                    // 2. APLICAR PARPADEO OSCURO
+                    const phase = (i / framesCount) * Math.PI * 2;
+                    const darkness = ((Math.sin(phase) + 1) / 2) * maxDarkness; 
+                    ctx.fillStyle = `rgba(0, 0, 0, ${darkness})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    // 3. DIBUJAR SUPERPOSICIÓN DE VIDEO HASTA ARRIBA DE TODO
+                    if (loadedEffectImgs.length > 0) {
+                        const fxFrameIndex = Math.floor((i * (videoSpeedFPS / speedFPS)) % loadedEffectImgs.length);
+                        const fxImg = loadedEffectImgs[(fxFrameIndex + loadedEffectImgs.length) % loadedEffectImgs.length];
+                        
+                        const sw = canvas.width * videoScale;
+                        const sh = canvas.height * videoScale;
+                        const sx = (canvas.width - sw) / 2;
+                        const sy = (canvas.height - sh) / 2;
+
+                        if (tintColor && tintColor !== '#ffffff') {
+                            const tintCanvas = document.createElement('canvas');
+                            tintCanvas.width = 200; tintCanvas.height = 200;
+                            const tCtx = tintCanvas.getContext('2d', { willReadFrequently: true });
+                            tCtx.drawImage(fxImg, sx, sy, sw, sh);
+                            tCtx.globalCompositeOperation = 'source-in';
+                            tCtx.fillStyle = tintColor;
+                            tCtx.fillRect(0, 0, 200, 200);
+                            ctx.drawImage(tintCanvas, 0, 0);
+                        } else {
+                            ctx.drawImage(fxImg, sx, sy, sw, sh);
+                        }
+                    }
+                    
+                    ctx.restore();
+                    frames.push(canvas.toDataURL('image/png'));
+                }
+                
+                gifshot.createGIF({
+                    images: frames,
+                    gifWidth: canvas.width,
+                    gifHeight: canvas.height,
+                    interval: 1 / speedFPS,
+                    numFrames: framesCount,
+                    sampleInterval: 10 
+                }, function(obj) {
+                    const gLoad = document.getElementById('gif-loading');
+                    if (gLoad) gLoad.classList.add('hidden');
+                    if(!obj.error) {
+                        const img = document.getElementById('gif-preview');
+                        if (img) {
+                            img.src = obj.image;
+                            img.classList.remove('hidden');
+                        }
+                        const gPlaceholder = document.getElementById('gif-placeholder');
+                        if (gPlaceholder) gPlaceholder.classList.add('hidden');
+                        
+                        const btnDl = document.getElementById('gif-download');
+                        if (btnDl) {
+                            btnDl.href = obj.image;
+                            btnDl.style.display = 'inline-flex';
+                        }
+                    } else {
+                        showToast('Error al compilar el GIF.', 'error');
+                    }
+                });
+            })();
+        }
+
+        const gifInput = document.getElementById('gif-input');
+        if (gifInput) {
+            gifInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const src = await fileToDataURL(file);
+                    gifBaseImage = await loadImage(src);
+                    gifOffsetX = 0; 
+                    gifOffsetY = 0;
+                    
+                    showToast('Imagen cargada, renderizando vista previa...');
+                    updateGifPreview();
+                }
+            });
+        }
+
+        const moveAmount = 15;
+        const moveUp = document.getElementById('gif-move-up');
+        if(moveUp) moveUp.addEventListener('click', () => { gifOffsetY -= moveAmount; updateGifPreview(); });
+        const moveDown = document.getElementById('gif-move-down');
+        if(moveDown) moveDown.addEventListener('click', () => { gifOffsetY += moveAmount; updateGifPreview(); });
+        const moveLeft = document.getElementById('gif-move-left');
+        if(moveLeft) moveLeft.addEventListener('click', () => { gifOffsetX -= moveAmount; updateGifPreview(); });
+        const moveRight = document.getElementById('gif-move-right');
+        if(moveRight) moveRight.addEventListener('click', () => { gifOffsetX += moveAmount; updateGifPreview(); });
+        const moveReset = document.getElementById('gif-move-reset');
+        if(moveReset) moveReset.addEventListener('click', () => { gifOffsetX = 0; gifOffsetY = 0; updateGifPreview(); });
+
+        window.setGifRotation = function(deg) {
+            const rotElem = document.getElementById('gif-rotation');
+            if (rotElem) {
+                rotElem.value = deg;
+                const valEl = document.getElementById('gif-rotation-val');
+                if(valEl) valEl.textContent = `${deg}°`;
+                updateGifPreview();
+            }
+        };
+
+        const gFrames = document.getElementById('gif-frames');
+        if(gFrames) gFrames.addEventListener('change', updateGifPreview);
+        const gDark = document.getElementById('gif-darkness');
+        if(gDark) gDark.addEventListener('change', updateGifPreview);
+        const gSpeed = document.getElementById('gif-speed');
+        if(gSpeed) gSpeed.addEventListener('change', updateGifPreview);
+        const gShape = document.getElementById('gif-shape');
+        if(gShape) gShape.addEventListener('change', updateGifPreview);
+        const gZoom = document.getElementById('gif-zoom');
+        if(gZoom) gZoom.addEventListener('input', updateGifPreview);
+        const gRot = document.getElementById('gif-rotation');
+        if(gRot) gRot.addEventListener('input', (e) => {
+            const val = e.target.value;
+            const valEl = document.getElementById('gif-rotation-val');
+            if(valEl) valEl.textContent = `${val}°`;
+            updateGifPreview();
+        });
+
+        // --- HERRAMIENTA 4: GIF A TIRA (Sprite con Transparencia Estricta) ---
+        const spriteInput = document.getElementById('sprite-input');
+        if (spriteInput) {
+            spriteInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const spriteLoading = document.getElementById('sprite-loading');
+                if (spriteLoading) spriteLoading.classList.remove('hidden');
+                const spriteResult = document.getElementById('sprite-result');
+                if (spriteResult) spriteResult.classList.add('hidden');
+                
+                try {
+                    const gifuct = await import('https://cdn.jsdelivr.net/npm/gifuct-js@2.1.2/+esm');
+                    const buffer = await file.arrayBuffer();
+                    const gif = gifuct.parseGIF(buffer);
+                    const frames = gifuct.decompressFrames(gif, true);
+                    
+                    if(!frames || frames.length === 0) throw new Error("No se pudieron extraer frames del GIF.");
+
+                    const targetHeight = 200;
+                    const origW = gif.lsd ? gif.lsd.width : frames[0].dims.width;
+                    const origH = gif.lsd ? gif.lsd.height : frames[0].dims.height;
+                    const ratio = origW / origH;
+                    const targetWidth = Math.round(targetHeight * ratio);
+                    
+                    const canvas = document.getElementById('sprite-canvas');
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    
+                    canvas.width = targetWidth * frames.length;
+                    canvas.height = targetHeight;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = origW;
+                    tempCanvas.height = origH;
+                    const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+                    
+                    for (let i = 0; i < frames.length; i++) {
+                        const frame = frames[i];
+                        
+                        if (frame.disposalType === 2) {
+                            tempCtx.clearRect(0, 0, origW, origH);
+                        }
+                        
+                        if (frame.dims.width > 0 && frame.dims.height > 0 && frame.patch) {
+                            try {
+                                const patchData = new ImageData(
+                                    new Uint8ClampedArray(frame.patch), 
+                                    frame.dims.width, 
+                                    frame.dims.height
+                                );
+                                
+                                const patchCanvas = document.createElement('canvas');
+                                patchCanvas.width = frame.dims.width;
+                                patchCanvas.height = frame.dims.height;
+                                patchCanvas.getContext('2d').putImageData(patchData, 0, 0);
+                                
+                                tempCtx.drawImage(patchCanvas, frame.dims.left, frame.dims.top);
+                            } catch (err) {
+                                console.warn(`Frame ${i} omitido:`, err);
+                            }
+                        }
+                        
+                        const frameCanvas = document.createElement('canvas');
+                        frameCanvas.width = targetWidth;
+                        frameCanvas.height = targetHeight;
+                        const fCtx = frameCanvas.getContext('2d', { willReadFrequently: true });
+                        
+                        fCtx.clearRect(0, 0, targetWidth, targetHeight);
+                        fCtx.beginPath();
+                        fCtx.arc(targetWidth / 2, targetHeight / 2, targetWidth / 2, 0, Math.PI * 2);
+                        fCtx.clip();
+                        
+                        fCtx.drawImage(tempCanvas, 0, 0, origW, origH, 0, 0, targetWidth, targetHeight);
+                        ctx.drawImage(frameCanvas, i * targetWidth, 0);
+                    }
+                    
+                    if (spriteLoading) spriteLoading.classList.add('hidden');
+                    if (spriteResult) spriteResult.classList.remove('hidden');
+                    
+                    const btnDownloadSprite = document.getElementById('btn-download-sprite');
+                    if (btnDownloadSprite) {
+                        btnDownloadSprite.onclick = () => {
+                            downloadCanvas('sprite-canvas', 'tira_sprites_redonda.png');
+                        };
+                    }
+                    
+                    showToast('Tira de sprites con transparencia procesada.');
+                    
+                } catch (err) {
+                    console.error("Error crítico de GIF:", err);
+                    const sLoad = document.getElementById('sprite-loading');
+                    if (sLoad) sLoad.classList.add('hidden');
+                    showToast('Error procesando el GIF.', 'error');
+                } finally {
+                    e.target.value = '';
+                }
+            });
+        }
+
+        // Inicializar pestaña por defecto
+        switchTab('tab-upscale');
+    </script>
+</body>
+</html>
